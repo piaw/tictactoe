@@ -1,7 +1,73 @@
+import com.google.gson.Gson;
+
+import java.io.*;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.HashMap;
 
 public class TicTacToeGameServer {
-    enum PlayerType { CONSOLE_CLIENT, ROBOT_PLAYER };
+    enum PlayerType { CONSOLE_CLIENT, ROBOT_PLAYER, HTML_CLIENT };
+
+    static final String NEW_GAME_REQ = "new_game_request";
+    static final String NEW_GAME_REPLY = "new_game_reply";
+    static final String STATUS_REQ = "game_status_request";
+    static final String STATUS_REPLY = "game_status_reply";
+    static final String MOVE_REQ = "move_request";
+    static final String MOVE_REPLY = "move_reply";
+    static final String ERROR = "error";
+
+    static class NewGameRequest {
+        PlayerType p1;
+        PlayerType p2;
+    }
+
+    static class NewGameReply {
+        int gameid;
+    }
+
+    static class GameStatusRequest {
+        int gameid;
+    }
+
+    static class GameStatusReply {
+        char board[];
+        char nextplayer;
+        char whowon;
+    }
+
+    static class PlayMoveRequest {
+        int gameid;
+        int i;
+        int j;
+        char side;
+    }
+
+    static class PlayMoveReply {
+        char board[];
+        char whowon;
+    }
+
+    static class ErrorMessage {
+        String error;
+    }
+
+    static class TicTacToeMessage {
+        String messageType;
+
+        NewGameRequest newgame_request;
+        NewGameReply newgame_reply;
+        GameStatusRequest gamestatus_request;
+        GameStatusReply gamestatus_reply;
+        PlayMoveRequest playmove_request;
+        PlayMoveReply playmove_reply;
+        ErrorMessage error;
+
+        public String toString() {
+            return messageType;
+        }
+    }
+
+
 
     static int gameId = 0;
     static HashMap games_table = new HashMap<Integer, Game>();
@@ -15,6 +81,8 @@ public class TicTacToeGameServer {
                 return new ConsolePlayer();
             case ROBOT_PLAYER:
                 return new RandomPlayer();
+            case HTML_CLIENT:
+                return new HTMLPlayer();
         }
 
         return null;
@@ -37,11 +105,90 @@ public class TicTacToeGameServer {
         return (Game) games_table.get(id);
     }
 
-    public static void main(String[] args) {
-        int id = CreateGame(PlayerType.CONSOLE_CLIENT, PlayerType.ROBOT_PLAYER);
-        Game g = GetGame(id);
-        System.out.printf("hello world\n");
-        g.Loop();
-        System.out.printf("Game over\n");
+    public static void main(String[] args) throws IOException {
+        int portNumber = Integer.parseInt(args[0]);
+
+        ServerSocket serverSocket = new ServerSocket(portNumber);
+        while (!serverSocket.isClosed()) {
+            System.out.println("Socket opened");
+            Socket clientSocket = serverSocket.accept();
+            System.out.println("Accept");
+            BufferedReader input = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            String content = input.readLine();
+            System.out.println("Read:" + content);
+            Writer output = new OutputStreamWriter(clientSocket.getOutputStream());
+            Gson gson = new Gson();
+            TicTacToeMessage message = gson.fromJson(content, TicTacToeMessage.class);
+            System.out.println("Message received" + message);
+
+            try {
+                if (message.messageType.equals(NEW_GAME_REQ)) {
+                    System.out.println("New Game Requested");
+                    int gameid = CreateGame(message.newgame_request.p1, message.newgame_request.p2);
+                    TicTacToeMessage reply = new TicTacToeMessage();
+                    reply.messageType = NEW_GAME_REPLY;
+                    reply.newgame_reply = new NewGameReply();
+                    reply.newgame_reply.gameid = gameid;
+                    output.write(gson.toJson(reply));
+                } else if (message.messageType.equals(STATUS_REQ)) {
+                    System.out.println("Status Requested");
+                    int gameid = message.gamestatus_request.gameid;
+                    Game game = (Game) games_table.get(gameid);
+                    TicTacToeMessage reply = new TicTacToeMessage();
+
+                    if (game == null) {
+                        reply.messageType = ERROR;
+                        reply.error = new ErrorMessage();
+                        reply.error.error = "No such game";
+                    } else {
+                        reply.messageType = STATUS_REPLY;
+                        reply.gamestatus_reply = new GameStatusReply();
+                        reply.gamestatus_reply.board = game.GetGameBoard().toCharArray();
+                        reply.gamestatus_reply.whowon = game.WhoWon();
+                        reply.gamestatus_reply.nextplayer = game.NextPlayer();
+                    }
+                    output.write(gson.toJson(reply));
+                } else if (message.messageType.equals(MOVE_REQ)) {
+                    System.out.println("Move requested");
+                    int gameid = message.playmove_request.gameid;
+                    Game game = (Game) games_table.get(gameid);
+                    TicTacToeMessage reply = new TicTacToeMessage();
+                    if (game == null) {
+                        reply.messageType = ERROR;
+                        reply.error = new ErrorMessage();
+                        reply.error.error = "No such game";
+                    } else {
+                        int i = message.playmove_request.i;
+                        int j = message.playmove_request.j;
+                        char side = message.playmove_request.side;
+                        if (!game.IsLegalMove(i, j, side)) {
+                            reply.messageType = ERROR;
+                            reply.error = new ErrorMessage();
+                            reply.error.error = "Illegal Move";
+                        } else {
+                            char whoWon = game.Play(i, j, side);
+                            reply.playmove_reply = new PlayMoveReply();
+                            reply.messageType = MOVE_REPLY;
+                            reply.playmove_reply.board = game.GetGameBoard().toCharArray();
+                            reply.playmove_reply.whowon = whoWon;
+                            if (whoWon == ' ') {
+                                game.getPlayer().MakeMove(game);
+                            }
+                        }
+                        output.write(gson.toJson(reply));
+                    }
+                } else {
+                    // invalid message
+                    TicTacToeMessage reply = new TicTacToeMessage();
+                    reply.messageType = ERROR;
+                    reply.error = new ErrorMessage();
+                    reply.error.error = "Invalid Request";
+                    output.write(gson.toJson(reply));
+                }
+            } finally {
+                output.flush();
+                clientSocket.close();
+            }
+        }
     }
 }
