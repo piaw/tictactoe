@@ -66,9 +66,10 @@ public class TicTacToeClient {
                 } catch (IOException e) {
                     System.exit(-1);
                 }
-                Scanner scanner = new Scanner(input).useDelimiter(",");
-                i = scanner.nextInt();
-                j = scanner.nextInt();
+
+                String[] coords = input.split(",");
+                i = Integer.parseInt(coords[0]);
+                j = Integer.parseInt(coords[1]);
                 valid_input = (i >= 0 && i < 3) && (j >= 0 && j < 3);
                 if (!valid_input) continue;
             }
