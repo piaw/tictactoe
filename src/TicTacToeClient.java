@@ -5,6 +5,8 @@ import java.net.Socket;
 import java.util.Scanner;
 
 public class TicTacToeClient {
+
+
     public static void main(String args[]) throws IOException {
         Socket clientSocket = new Socket(args[0], Integer.parseInt(args[1]));
         Writer writer = new OutputStreamWriter(clientSocket.getOutputStream());
@@ -83,7 +85,8 @@ public class TicTacToeClient {
             move.playmove_request.side = 'W'; // we're always playing white
             sendToServer(writer, move);
             reply = getTicTacToeMessage(gson, reader);
-            assert (reply.messageType.equals(TicTacToeGameServer.MOVE_REPLY));
+            if (!reply.messageType.equals(TicTacToeGameServer.MOVE_REPLY))
+                continue;
             char whowon = reply.playmove_reply.whowon;
             if (whowon != ' ') {
                 if (whowon == 'W') {

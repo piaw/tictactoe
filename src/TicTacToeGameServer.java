@@ -8,6 +8,7 @@ import java.util.HashMap;
 public class TicTacToeGameServer {
     enum PlayerType { CONSOLE_CLIENT, ROBOT_PLAYER, HTML_CLIENT };
 
+    //TODO: Move all the message protocol stuff into its own self-contained module shared with client
     static final String NEW_GAME_REQ = "new_game_request";
     static final String NEW_GAME_REPLY = "new_game_reply";
     static final String STATUS_REQ = "game_status_request";
@@ -67,7 +68,9 @@ public class TicTacToeGameServer {
         }
     }
 
-
+    static void Log(String s) {
+        System.out.println(s);
+    }
 
     static int gameId = 0;
     static HashMap games_table = new HashMap<Integer, Game>();
@@ -110,20 +113,20 @@ public class TicTacToeGameServer {
 
         ServerSocket serverSocket = new ServerSocket(portNumber);
         while (!serverSocket.isClosed()) {
-            System.out.println("Socket opened");
+            Log("Socket opened");
             Socket clientSocket = serverSocket.accept();
-            System.out.println("Accept");
+            Log("Accept");
             BufferedReader input = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             String content = input.readLine();
             System.out.println("Read:" + content);
             Writer output = new OutputStreamWriter(clientSocket.getOutputStream());
             Gson gson = new Gson();
             TicTacToeMessage message = gson.fromJson(content, TicTacToeMessage.class);
-            System.out.println("Message received" + message);
+            Log("Message received" + message);
 
             try {
                 if (message.messageType.equals(NEW_GAME_REQ)) {
-                    System.out.println("New Game Requested");
+                    Log("New Game Requested");
                     int gameid = CreateGame(message.newgame_request.p1, message.newgame_request.p2);
                     TicTacToeMessage reply = new TicTacToeMessage();
                     reply.messageType = NEW_GAME_REPLY;
@@ -131,7 +134,7 @@ public class TicTacToeGameServer {
                     reply.newgame_reply.gameid = gameid;
                     output.write(gson.toJson(reply));
                 } else if (message.messageType.equals(STATUS_REQ)) {
-                    System.out.println("Status Requested");
+                    Log("Status Requested");
                     int gameid = message.gamestatus_request.gameid;
                     Game game = (Game) games_table.get(gameid);
                     TicTacToeMessage reply = new TicTacToeMessage();
@@ -149,7 +152,7 @@ public class TicTacToeGameServer {
                     }
                     output.write(gson.toJson(reply));
                 } else if (message.messageType.equals(MOVE_REQ)) {
-                    System.out.println("Move requested");
+                    Log("Move requested");
                     int gameid = message.playmove_request.gameid;
                     Game game = (Game) games_table.get(gameid);
                     TicTacToeMessage reply = new TicTacToeMessage();
@@ -172,6 +175,7 @@ public class TicTacToeGameServer {
                             reply.playmove_reply.board = game.GetGameBoard().toCharArray();
                             reply.playmove_reply.whowon = whoWon;
                             if (whoWon == ' ') {
+                                // this only matters when you have computer players
                                 game.getPlayer().MakeMove(game);
                             }
                         }
