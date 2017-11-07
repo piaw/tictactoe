@@ -79,11 +79,22 @@ class GameBoardTest {
         assertEquals(gb.CheckWin(), 'B');
         assertTrue(gb.CheckWin('B'));
         assertFalse(gb.CheckWin('W'));
+        gb = new GameBoard();
+        gb.Play(1,1, 'W');
+        assertEquals(gb.CheckWin(), ' ');
+        gb.Play(2, 0, 'B');
+        assertEquals(gb.CheckWin(), ' ');
+        gb.Play(0, 1, 'W');
+        assertEquals(gb.CheckWin(), ' ');
+        gb.Play(0, 2, 'B');
+        assertEquals(gb.CheckWin(), ' ');
+        gb.Play(2, 1, 'W');
+        assertEquals(gb.CheckWin(), 'W');
     }
 
     @org.junit.jupiter.api.Test
     void checkTie() {
-        GameBoard gb = new GameBoard("BWWWBWBBW");
+        GameBoard gb = new GameBoard("BWWWBBBBW");
         assertEquals(gb.CheckWin(), 'T');
         gb = new GameBoard("BWWWBWBWB");
         assertEquals(gb.CheckWin(), 'B');

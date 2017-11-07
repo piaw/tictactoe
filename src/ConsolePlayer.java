@@ -21,7 +21,7 @@ public class ConsolePlayer extends Player {
                 System.out.printf("|");
             } else {
                 if (i == 2 || i == 5)
-                    System.out.printf("\n---------\n");
+                    System.out.printf("\n-----\n");
                 else
                     System.out.printf("\n");
             }

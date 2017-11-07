@@ -50,7 +50,7 @@ public class GameBoard {
         assert(j >= 0);
         assert(j < 3);
         for (int i = 0; i < 3; i++)
-            if (_board[i][i] != side)
+            if (_board[i][j] != side)
                 return false;
         return true;
     }
